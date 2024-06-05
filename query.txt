@@ -1,0 +1,57 @@
+//DYNAMIC filter pattern
+
+-- dropoff taxi_zones at the latest dropoff times
+
+CREATE OR REPLACE MATERIALIZED VIEW dropoff_zones AS
+SELECT 
+    tpep_dropoff_datetime as dropoff_times,
+    taxi_zone.Zone as dropoff_location
+FROM trip_data
+JOIN taxi_zone ON 
+trip_data.DOLocationID = taxi_zone.location_id
+LIMIT 10;
+
+CREATE MATERIALIZED VIEW latest_dropoff_zone AS
+WITH t as ( 
+    SELECT max(tpep_dropoff_datetime) as latest_dropoff_time FROM trip_data
+)
+SELECT taxi_zone.Zone as taxi_zone,
+latest_dropoff_time
+FROM t,trip_data
+JOIN taxi_zone ON 
+trip_data.DOLocationID = taxi_zone.location_id
+WHERE trip_data.tpep_dropoff_datetime = t.latest_dropoff_time;
+
+
+- Avg,Min and Max trip time btn each taxi zone
+- Avg pair of zones with highest avg trip time
+
+- select min and max trip times btn each zone
+
+with t as (
+    select 
+        AVERAGE(tpep_dropoff_datetime - tpep_pickup_datetime) as average_time,
+        Min(tpep_dropoff_datetime - tpep_pickup_datetime)
+)
+
+----------------------------------------
+
+with t as (
+    SELECT (tpep_dropoff_datetime - tpep_pickup_datetime) AS trip_time
+    FROM trip_data
+)
+
+SELECT 
+    trip_time,
+    AVG(trip_time) as average_trip_time,
+    MIN(trip_time) as min_trip_time,
+    MAX(trip_time) as max_trip_time,
+    CONCAT(taxi_zone_pu.Zone,taxi_zone_do.Zone) as zone_pair
+FROM 
+    trip_data, t
+JOIN 
+    taxi_zone as taxi_zone_pu ON trip_data.PULocationID = taxi_zone_pu.location_id
+JOIN 
+    taxi_zone as taxi_zone_do ON trip_data.DOLocationID = taxi_zone_do.location_id
+GROUP BY zone_pair;
+
